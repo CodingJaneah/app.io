@@ -568,7 +568,3 @@ elif data_source == "Upload Dataset":
                         st.write("R² Score: {:.2f}".format(best_model["R² Score"].values[0]))
                         st.write("RMSE: {:.2f}".format(best_model["RMSE"].values[0]))
                         st.write("Mean Absolute Error: {:.2f}".format(best_model["MAE"].values[0]))
-
-                    # Display Model Comparison Table
-                    st.subheader("Model Comparison")
-                    st.table(comparison_df)
