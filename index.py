@@ -15,11 +15,23 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis, LinearDiscriminantAnalysis
 from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_squared_error, r2_score, f1_score, classification_report, confusion_matrix, ConfusionMatrixDisplay, explained_variance_score, mean_absolute_error
 # Add this function to convert DataFrame to CSV
+
 def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 # Streamlit App
 st.title("ML Model Generator")
+
+# Add team member section here
+st.sidebar.header("About the Team")
+st.sidebar.write("Team Members:")
+st.sidebar.write("Mariana Jane L. Ramos")
+st.sidebar.write("Anne Louis Tampoco")
+st.sidebar.write("Ellyza Mae Periabras")
+st.sidebar.write("Derick Emmanuel Marpuri")
+
+# Add a horizontal line
+st.sidebar.markdown("---")
 
 # Sidebar for data source selection
 st.sidebar.header("Data Source")
@@ -55,9 +67,9 @@ if data_source == "Generate Synthetic Data":
                     feature = feature.strip()
                     col1, col2 = st.columns(2)
                     with col1:
-                        mean_value = st.number_input(f"Mean for {feature} in {class_name}", min_value=-100.0, max_value=100.0, value=0.0, key=f"mean_{class_name}_{feature}")
+                        mean_value = st.number_input(f"Mean for {feature} in {class_name}", min_value=-100.0, max_value=500.0, value=0.0, key=f"mean_{class_name}_{feature}")
                     with col2:
-                        std_value = st.number_input(f"Std Dev for {feature} in {class_name}", min_value=0.0, max_value=100.0, value=1.0, key=f"std_{class_name}_{feature}")
+                        std_value = st.number_input(f"Std Dev for {feature} in {class_name}", min_value=0.0, max_value=500.0, value=1.0, key=f"std_{class_name}_{feature}")
                     class_feature_settings[class_name][feature] = {"mean": mean_value, "std": std_value}
 
         st.info('Please generate data using the sidebar button to view visualizations and results.', icon="ℹ️")
@@ -69,14 +81,20 @@ if data_source == "Generate Synthetic Data":
         with col2:
             test_size_percentage = st.slider("Test Size", min_value=10, max_value=50, value=10, step=5)
 
-        # Model selection
-        st.sidebar.subheader("Model Selection")
-        model_choice = st.sidebar.radio(
-            "Choose a Classification Model",
-            ("Logistic Regression", "Decision Trees", "Random Forest", "Gradient Boosting", 
-             "Support Vector Machine", "K-Nearest Neighbors", "Naive Bayes", 
-             "Linear Discriminant Analysis", "Quadratic Discriminant Analysis")
-        )
+            # Calculate the training size percentage
+            train_size_percentage = 100 - test_size_percentage
+            
+            # Display the text with the calculated percentages
+            st.write(f"Test: {test_size_percentage}% / Train: {train_size_percentage}%")
+
+        # # Model selection
+        # st.sidebar.subheader("Model Selection")
+        # model_choice = st.sidebar.radio(
+        #     "Choose a Classification Model",
+        #     ("Logistic Regression", "Decision Trees", "Random Forest", "Gradient Boosting", 
+        #      "Support Vector Machine", "K-Nearest Neighbors", "Naive Bayes", 
+        #      "Linear Discriminant Analysis", "Quadratic Discriminant Analysis")
+        # )
 
         load_data_button = st.sidebar.button("Generate Data and Train Models")
 
@@ -140,104 +158,110 @@ if data_source == "Generate Synthetic Data":
 
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_percentage / 100, random_state=42)
 
-                # Modeling based on user selection
-                if model_choice == "Logistic Regression":
-                    model = LogisticRegression(max_iter=200)
-                elif model_choice == "Decision Trees":
-                    model = DecisionTreeClassifier()
-                elif model_choice == "Random Forest":
-                    model = RandomForestClassifier()
-                elif model_choice == "Gradient Boosting":
-                    model = GradientBoostingClassifier()
-                elif model_choice == "Support Vector Machine":
-                    model = SVC()
-                elif model_choice == "K-Nearest Neighbors":
-                    model = KNeighborsClassifier()
-                elif model_choice == "Naive Bayes":
-                    model = GaussianNB()
-                elif model_choice == "Linear Discriminant Analysis":
-                    model = LinearDiscriminantAnalysis()
-                elif model_choice == "Quadratic Discriminant Analysis":
-                    model = QuadraticDiscriminantAnalysis()
+                                # Dictionary to store model performance
+                model_performance = []
 
-                model.fit(X_train, y_train)
-                y_pred = model.predict(X_test)
+                # List of models to train for classification
+                classification_models = {
+                    "Logistic Regression": LogisticRegression(max_iter=200),
+                    "Decision Trees": DecisionTreeClassifier(),
+                    "Random Forest": RandomForestClassifier(),
+                    "Gradient Boosting": GradientBoostingClassifier(),
+                    "Support Vector Machine": SVC(),
+                    "K-Nearest Neighbors": KNeighborsClassifier(),
+                    "Naive Bayes": GaussianNB(),
+                    "Linear Discriminant Analysis": LinearDiscriminantAnalysis(),
+                    "Quadratic Discriminant Analysis": QuadraticDiscriminantAnalysis(),
+                }
 
-                st.subheader("Model Performance")
-                st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+
+
+                # After training the models and predicting, store the confusion matrices
+                confusion_matrices = []
+
+                # Train models and evaluate
+                for model_name, model in classification_models.items():
+                    start_time = time.time()  # Start timer
+                    model.fit(X_train, y_train)  # Train model
+                    y_pred = model.predict(X_test)  # Predict on test set
+
+                    # Calculate performance metrics
+                    accuracy = accuracy_score(y_test, y_pred)
+                    report = classification_report(y_test, y_pred, output_dict=True)
+
+                    # Store performance metrics
+                    model_performance.append({
+                        "Model": model_name,
+                        "Accuracy": accuracy,
+                        "Precision": report['weighted avg']['precision'],
+                        "Recall": report['weighted avg']['recall'],
+                        "F1-Score": report['weighted avg']['f1-score'],
+                        "Training Time (s)": time.time() - start_time,
+                        "Status": "Success"
+                    })
+
+                    # Create confusion matrix and store it
+                    cm = confusion_matrix(y_test, y_pred)
+                    confusion_matrices.append((model_name, cm))
+
+                            
+                # Convert to DataFrame
+                comparison_df = pd.DataFrame(model_performance)
+
+                # Sort the DataFrame by Accuracy in descending order
+                comparison_df = comparison_df.sort_values(by="Accuracy", ascending=False)
+
+                    # Save to session state
+                st.session_state.comparison_df = comparison_df
+
+                # Identify the best model
+                best_model_name = comparison_df.loc[comparison_df['Accuracy'].idxmax()]['Model']
+                best_model = comparison_df.loc[comparison_df['Model'] == best_model_name]
+
+                # Display results for the best model
+                st.subheader("Best Model: {}".format(best_model_name))
+                st.write("Accuracy: {:.2f}".format(best_model["Accuracy"].values[0]))
                 st.write("Classification Report:")
-                st.text(classification_report(y_test, y_pred, target_names=classes))
+                classification_report_df = pd.DataFrame(report).transpose()
+                st.table(classification_report_df)
 
-                # Calculate additional metrics
-                precision = precision_score(y_test, y_pred, average='weighted')
-                recall = recall_score(y_test, y_pred, average='weighted')
-                f1 = f1_score(y_test, y_pred, average='weighted')
+                # Display Model Comparison Table right after the classification report
+                st.subheader("Model Comparison")
+                st.table(comparison_df)
 
-                # Display additional metrics
-                st.write(f"Precision: {precision:.2f}")
-                st.write(f"Recall: {recall:.2f}")
-                st.write(f"F1 Score: {f1:.2f}")
+                # Create a summary DataFrame for visualization
+                if problem_type == "Classification":
+                    metrics_df = comparison_df[['Model', 'Accuracy', 'Precision', 'Recall', 'F1-Score']]
+                    metrics_df.set_index('Model', inplace=True)
+                else:  # Regression
+                    metrics_df = comparison_df[['Model', 'RMSE', 'R² Score', 'MAE']]
+                    metrics_df.set_index('Model', inplace=True)
 
-                # Confusion Matrix
-                st.subheader("Confusion Matrix")
-                cm = confusion_matrix(y_test, y_pred)
-                disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
-                disp.plot(cmap='Blues')
-                st.pyplot(plt)
+    
+                    # Alternatively, use Plotly for interactive charts
+                import plotly.express as px
 
-               # Create a mapping from class names to integers
-                class_mapping = {name.strip(): i for i, name in enumerate(classes)}
+                # Melt the DataFrame for Plotly
+                metrics_melted = metrics_df.reset_index().melt(id_vars='Model', var_name='Metric', value_name='Score')
 
-                # Simulation for Classification
-                st.subheader("Simulation of Outcomes")
+                # Create a bar chart with Plotly
+                fig = px.bar(metrics_melted, x='Model', y='Score', color='Metric', barmode='group',
+                            title='Model Performance Metrics Comparison')
+                st.plotly_chart(fig)
 
-                # Use mean and std from training data to generate realistic simulated data
-                means = df[feature_names.split(',')].mean().values
-                stds = df[feature_names.split(',')].std().values
 
-                # Generate simulated data based on normal distribution
-                simulated_data = np.random.normal(loc=means, scale=stds, size=(500, len(feature_names.split(','))) )  # Increased size for better simulation
+                 # Display confusion matrices in a 3-column format
+                num_models = len(confusion_matrices)
+                columns = st.columns(3)
 
-                # Ensure simulated data is within a reasonable range
-                simulated_data = np.clip(simulated_data, -100, 100)  # Adjust these limits as necessary
-
-                # Simulated Predictions
-                simulated_predictions = model.predict(simulated_data)
-
-                # Create a DataFrame for the simulated data and predictions
-                simulated_df = pd.DataFrame(simulated_data, columns=feature_names.split(','))
-                simulated_df['Predicted Class'] = simulated_predictions
-
-                # Display the simulated outcomes
-                st.write("Simulated Outcomes:")
-                st.write(simulated_df)
-
-                # Create synthetic true classes for the simulated data for comparison
-                synthetic_true_classes = np.random.choice(classes, size=simulated_predictions.shape[0])
-
-                # Convert synthetic true classes to their integer representations
-                synthetic_true_classes_int = np.array([class_mapping[name.strip()] for name in synthetic_true_classes])
-
-                # Calculate metrics
-                accuracy = accuracy_score(synthetic_true_classes_int, simulated_predictions)
-                precision = precision_score(synthetic_true_classes_int, simulated_predictions, average='weighted')
-                recall = recall_score(synthetic_true_classes_int, simulated_predictions, average='weighted')
-                f1 = f1_score(synthetic_true_classes_int, simulated_predictions, average='weighted')
-
-                # Display metrics
-                st.subheader("Model Performance on Simulated Data")
-                st.write(f"Accuracy: {accuracy:.2f}")
-                st.write(f"Precision: {precision:.2f}")
-                st.write(f"Recall: {recall:.2f}")
-                st.write(f"F1 Score: {f1:.2f}")
-
-                # Confusion Matrix for Simulated Outcomes
-                st.subheader("Confusion Matrix for Simulated Outcomes")
-                cm_simulation = confusion_matrix(synthetic_true_classes_int, simulated_predictions, labels=range(len(classes)))
-                disp_simulation = ConfusionMatrixDisplay(confusion_matrix=cm_simulation, display_labels=classes)
-                disp_simulation.plot(cmap='Blues')
-                st.pyplot(plt)
-
+                for index, (model_name, cm) in enumerate(confusion_matrices):
+                    col_index = index % 3  # Get the current column index
+                    with columns[col_index]:
+                        st.subheader(f"Confusion Matrix for {model_name}")
+                        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=model.classes_)
+                        disp.plot(cmap=plt.cm.Blues)
+                        st.pyplot(plt)
+          
     else:  # Regression
         st.sidebar.subheader("Data Generation Parameters")
 
@@ -253,14 +277,6 @@ if data_source == "Generate Synthetic Data":
         with col2:
             noise_level = st.slider("Noise Level", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
 
-        # Model selection
-        st.sidebar.subheader("Model Selection")
-        model_choice = st.sidebar.radio(
-            "Choose a Regression Model",
-            ("Linear Regression", "Ridge Regression", "Lasso Regression", 
-             "Decision Tree Regressor", "Random Forest Regressor", 
-             "Gradient Boosting Regressor", "Support Vector Regressor")
-        )
 
         load_data_button = st.sidebar.button("Generate Data and Train Models")
 
@@ -296,54 +312,78 @@ if data_source == "Generate Synthetic Data":
                 # Split the data
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-                # Modeling based on user selection
-                if model_choice == "Linear Regression":
-                    model = LinearRegression()
-                elif model_choice == "Ridge Regression":
-                    model = Ridge()
-                elif model_choice == "Lasso Regression":
-                    model = Lasso()
-                elif model_choice == "Decision Tree Regressor":
-                    model = DecisionTreeRegressor()
-                elif model_choice == "Random Forest Regressor":
-                    model = RandomForestRegressor()
-                elif model_choice == "Gradient Boosting Regressor":
-                    model = GradientBoostingRegressor()
-                elif model_choice == "Support Vector Regressor":
-                    model = SVR()
+                 # Dictionary to store model performance
+                model_performance = []
 
-                model.fit(X_train, y_train)
-                y_pred = model.predict(X_test)
+                # List of models to train for regression
+                regression_models = {
+                    "Linear Regression": LinearRegression(),
+                    "Ridge Regression": Ridge(),
+                    "Lasso Regression": Lasso(),
+                    "Decision Tree Regressor": DecisionTreeRegressor(),
+                    "Random Forest Regressor": RandomForestRegressor(),
+                    "Gradient Boosting Regressor": GradientBoostingRegressor(),
+                    "Support Vector Regressor": SVR(),
+                }
 
-                # Model performance for Regression
-                st.subheader("Model Performance")
+                # Train models and evaluate
+                for model_name, model in regression_models.items():
+                    start_time = time.time()  # Start timer
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
 
-                # Assuming y_test and y_pred are defined
-                mse = mean_squared_error(y_test, y_pred)
-                rmse = np.sqrt(mse)
-                mae = mean_absolute_error(y_test, y_pred)
-                r2 = r2_score(y_test, y_pred)
-                explained_variance = explained_variance_score(y_test, y_pred)
+                        # Calculate performance metrics
+                    mse = mean_squared_error(y_test, y_pred)
+                    rmse = np.sqrt(mse)
+                    mae = mean_absolute_error(y_test, y_pred)
+                    r2 = r2_score(y_test, y_pred)
+                    explained_variance = explained_variance_score(y_test, y_pred)
+                    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100  # Mean Absolute Percentage Error
 
-                # Mean Absolute Percentage Error - MAPE
-                mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
+                    # Store performance metrics
+                    model_performance.append({
+                        "Model": model_name,
+                        "RMSE": rmse,
+                        "R² Score": r2,
+                        "MAE": mae,
+                        "Explained Variance": explained_variance,
+                        "MAPE": mape,
+                        "Training Time (s)": time.time() - start_time,
+                        "Status": "Success"
+                    })
 
-                # Display the metrics
-                st.write(f"Mean Squared Error (MSE): {mse:.2f}")
-                st.write(f"Root Mean Squared Error (RMSE): {rmse:.2f}")
-                st.write(f"Mean Absolute Error (MAE): {mae:.2f}")
-                st.write(f"R² Score: {r2:.2f}")
-                st.write(f"Explained Variance Score: {explained_variance:.2f}")
-                st.write(f"Mean Absolute Percentage Error (MAPE): {mape:.2f}%")
+                # Convert to DataFrame
+                comparison_df = pd.DataFrame(model_performance)
 
-                # Visualizing predictions vs actual values
-                plt.figure()
-                plt.scatter(y_test, y_pred, alpha=0.5)
-                plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--', lw=2)
-                plt.title('Actual vs Predicted')
-                plt.xlabel('Actual')
-                plt.ylabel('Predicted')
-                st.pyplot(plt)
+                # Sort the DataFrame by R² Score in descending order
+                comparison_df = comparison_df.sort_values(by="R² Score", ascending=False)
+
+                # Identify the best model
+                best_model_name = comparison_df.loc[comparison_df['R² Score'].idxmax()]['Model']
+                best_model = comparison_df.loc[comparison_df['Model'] == best_model_name]
+                
+        
+                # Display results for the best model
+                st.subheader("Best Model: {}".format(best_model_name))
+                st.write("R² Score: {:.2f}".format(best_model["R² Score"].values[0]))
+                st.write("RMSE: {:.2f}".format(best_model["RMSE"].values[0]))
+
+                 # Optionally, display the full comparison table
+                st.subheader("Model Comparison")
+                st.table(comparison_df)
+                
+                # Create a summary DataFrame for visualization
+                metrics_df = comparison_df[['Model', 'RMSE', 'R² Score', 'MAE']]
+                metrics_df.set_index('Model', inplace=True)
+
+                # Melt the DataFrame for Plotly
+                metrics_melted = metrics_df.reset_index().melt(id_vars='Model', var_name='Metric', value_name='Score')
+
+                # Create a bar chart with Plotly
+                import plotly.express as px
+                fig = px.bar(metrics_melted, x='Model', y='Score', color='Metric', barmode='group',
+                            title='Model Performance Metrics Comparison (Regression)')
+                st.plotly_chart(fig)
 
 elif data_source == "Upload Dataset":
     st.sidebar.subheader("Upload Dataset")
@@ -362,125 +402,173 @@ elif data_source == "Upload Dataset":
 
         test_size_percentage = st.sidebar.slider("Test Size", min_value=10, max_value=50, value=10, step=10)
 
-        problem_type = st.sidebar.selectbox("Select Problem Type", ("Classification", "Regression"))
+        # Select target variable
+        numeric_df = df.select_dtypes(include=[np.number])  # Select only numeric columns
+        categorical_df = df.select_dtypes(include=['object', 'category'])  # Select categorical columns
 
-    # Model selection based on problem type
-        if problem_type == "Classification":
-                st.sidebar.subheader("Select Classification Model")
-                model_choice = st.sidebar.radio(
-                    "Choose a Classification Model",
-                    ("Logistic Regression", "Decision Trees", "Random Forest", "Gradient Boosting", 
-                    "Support Vector Machine", "K-Nearest Neighbors", "Naive Bayes", 
-                    "Linear Discriminant Analysis", "Quadratic Discriminant Analysis")
-                )
-        else:  # Regression
-                st.sidebar.subheader("Select Regression Model")
-                model_choice = st.sidebar.radio(
-                    "Choose a Regression Model",
-                    ("Linear Regression", "Ridge Regression", "Lasso Regression", 
-                    "Decision Tree Regressor", "Random Forest Regressor", 
-                    "Gradient Boosting Regressor", "Support Vector Regressor")
-                )
+        # Combine numeric and categorical columns for target variable selection
+        all_target_options = pd.concat([numeric_df, categorical_df], axis=1)
 
-                # Ensure only numeric columns are selected
-                numeric_df = df.select_dtypes(include=[np.number])  # Select only numeric columns
+        if all_target_options.shape[1] < 2:  # At least one feature and one target
+            st.error("The dataset must contain at least one feature and one target variable.")
+        else:
+            target_col = st.sidebar.selectbox("Select Target Variable", all_target_options.columns)
 
-                if numeric_df.shape[1] < 2:  # At least one feature and one target
-                    st.error("The dataset must contain at least one feature and one target variable.")
-                else:
-                    target_col = st.sidebar.selectbox("Select Target Variable", numeric_df.columns)
+            # Define X and y based on the selected target variable
+            X = df.drop(columns=[target_col])  # Features
+            y = df[target_col]  # Target variable
 
-                    # Remove target column from features
-                    X = numeric_df.drop(columns=[target_col]).values
-                    y = numeric_df[target_col].values
+            # Add manual selection for problem type
+            st.sidebar.subheader("Select Problem Type")
+            problem_type = st.sidebar.selectbox("Select Problem Type", ("Classification", "Regression"))
 
-        train_button = st.sidebar.button("Train Models")
+            train_button = st.sidebar.button("Train Models")
 
-        with st.spinner("Training uploaded dataset. Please wait..."):
+            if train_button:
+                with st.spinner("Training uploaded dataset. Please wait..."):
                     time.sleep(2)
 
-        if train_button:
-                if problem_type == "Classification":
-                    # Assume the last column is the target variable for classification
-                    X = df.iloc[:, :-1].values
-                    y = df.iloc[:, -1].values
-
                     # Train-test split
                     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_percentage / 100, random_state=42)
 
-                    # Model selection
-                    if model_choice == "Logistic Regression":
-                        model = LogisticRegression(max_iter=200)
-                    elif model_choice == "Decision Trees":
-                        model = DecisionTreeClassifier()
-                    elif model_choice == "Random Forest":
-                        model = RandomForestClassifier()
-                    elif model_choice == "Gradient Boosting":
-                        model = GradientBoostingClassifier()
-                    elif model_choice == "Support Vector Machine":
-                        model = SVC()
-                    elif model_choice == "K-Nearest Neighbors":
-                        model = KNeighborsClassifier()
-                    elif model_choice == "Naive Bayes":
-                        model = GaussianNB()
-                    elif model_choice == "Linear Discriminant Analysis":
-                        model = LinearDiscriminantAnalysis()
-                    elif model_choice == "Quadratic Discriminant Analysis":
-                        model = QuadraticDiscriminantAnalysis()
+                    # Prepare to store model performance
+                    model_performance = []
 
-                    model.fit(X_train, y_train)
-                    y_pred = model.predict(X_test)
 
-                    # Display results (similar to your synthetic data section)
-                    st.subheader("Model Performance")
-                    st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
-                    st.write("Classification Report:")
-                    st.text(classification_report(y_test, y_pred))
+                    # Initialize confusion_matrices
+                    confusion_matrices = []
 
-                    # Confusion Matrix
-                    st.subheader("Confusion Matrix")
-                    cm = confusion_matrix(y_test, y_pred)
-                    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-                    disp.plot(cmap='Blues')
-                    st.pyplot(plt)
+                    # Select models based on problem type
+                    if problem_type == "Classification":
+                        models = {
+                            "Logistic Regression": LogisticRegression(max_iter=200),
+                            "Decision Trees": DecisionTreeClassifier(),
+                            "Random Forest": RandomForestClassifier(),
+                            "Gradient Boosting": GradientBoostingClassifier(),
+                            "Support Vector Machine": SVC(),
+                            "K-Nearest Neighbors": KNeighborsClassifier(),
+                            "Naive Bayes": GaussianNB(),
+                            "Linear Discriminant Analysis": LinearDiscriminantAnalysis(),
+                            "Quadratic Discriminant Analysis": QuadraticDiscriminantAnalysis(),
+                        }
 
-                else:  # Regression
-                    # Assume the last column is the target variable for regression
-                    X = df.iloc[:, :-1].values
-                    y = df.iloc[:, -1].values
+                        # Train models and evaluate
+                        for model_name, model in models.items():
+                            start_time = time.time()  # Start timer
+                            model.fit(X_train, y_train)
+                            y_pred = model.predict(X_test)
+                            accuracy = accuracy_score(y_test, y_pred)
+                            report = classification_report(y_test, y_pred, output_dict=True)
 
-                    # Train-test split
-                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_percentage / 100, random_state=42)
+                            # Store performance metrics
+                            model_performance.append({
+                                "Model": model_name,
+                                "Accuracy": accuracy,
+                                "Precision": report['weighted avg']['precision'],
+                                "Recall": report['weighted avg']['recall'],
+                                "F1-Score": report['weighted avg']['f1-score'],
+                                "Training Time (s)": time.time() - start_time,
+                                "Status": "Success"
+                            })         
 
-                    # Model selection
-                    if model_choice == "Linear Regression":
-                        model = LinearRegression()
-                    elif model_choice == "Ridge Regression":
-                        model = Ridge()
-                    elif model_choice == "Lasso Regression":
-                        model = Lasso()
-                    elif model_choice == "Decision Tree Regressor":
-                        model = DecisionTreeRegressor()
-                    elif model_choice == "Random Forest Regressor":
-                        model = RandomForestRegressor()
-                    elif model_choice == "Gradient Boosting Regressor":
-                        model = GradientBoostingRegressor()
-                    elif model_choice == "Support Vector Regressor":
-                        model = SVR()
+                            # Create confusion matrix and store it
+                            cm = confusion_matrix(y_test, y_pred)
+                            confusion_matrices.append((model_name, cm))
 
-                    model.fit(X_train, y_train)
-                    y_pred = model.predict(X_test)
+                        # Convert to DataFrame
+                        comparison_df = pd.DataFrame(model_performance)
 
-                    # Model performance for Regression
-                    st.subheader("Model Performance")
-                    st.write(f"Mean Squared Error: {mean_squared_error(y_test, y_pred):.2f}")
-                    st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
+                        # Sort the DataFrame
+                        comparison_df = comparison_df.sort_values(by="Accuracy", ascending=False)
 
-                    # Visualizing predictions vs actual values
-                    plt.figure()
-                    plt.scatter(y_test, y_pred, alpha=0.5)
-                    plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--', lw=2)
-                    plt.title('Actual vs Predicted')
-                    plt.xlabel('Actual')
-                    plt.ylabel('Predicted')
-                    st.pyplot(plt)
+                        # Best model
+                        best_model_name = comparison_df.loc[comparison_df['Accuracy'].idxmax()]['Model']
+                        best_model = comparison_df.loc[comparison_df['Model'] == best_model_name]
+
+                        # Display results for the best model
+                        st.subheader("Best Model: {}".format(best_model_name))
+                        st.write("Accuracy: {:.2f}".format(best_model["Accuracy"].values[0]))
+                        st.write("Classification Report:")
+                        st.text(classification_report(y_test, y_pred))
+
+                        # Create a summary DataFrame for visualization
+                        metrics_df = comparison_df[['Model', 'Accuracy', 'Precision', 'Recall', 'F1-Score']]
+                        metrics_df.set_index('Model', inplace=True)
+
+                        # Melt the DataFrame for Plotly
+                        metrics_melted = metrics_df.reset_index().melt(id_vars='Model', var_name='Metric', value_name='Score')
+                                                
+                        # Display Model Comparison Table before Confusion Matrices
+                        st.subheader("Model Comparison")
+                        st.table(comparison_df)
+
+                        # Create a bar chart with Plotly
+                        import plotly.express as px
+                        fig = px.bar(metrics_melted, x='Model', y='Score', color='Metric', barmode='group',
+                                    title='Model Performance Metrics Comparison (Classification)')
+                        st.plotly_chart(fig)
+
+                        # Now display confusion matrices in a 3-column format
+                        num_models = len(confusion_matrices)
+                        columns = st.columns(3)
+
+                        for index, (model_name, cm) in enumerate(confusion_matrices):
+                            col_index = index % 3  # Get the current column index
+                            with columns[col_index]:
+                                st.subheader(f"Confusion Matrix for {model_name}")
+                                disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+                                disp.plot(cmap=plt.cm.Blues)
+                                st.pyplot(plt)
+
+                    else:  # Regression
+                        models = {
+                            "Linear Regression": LinearRegression(),
+                            "Ridge Regression": Ridge(),
+                            "Lasso Regression": Lasso(),
+                            "Decision Tree Regressor": DecisionTreeRegressor(),
+                            "Random Forest Regressor": RandomForestRegressor(),
+                            "Gradient Boosting Regressor": GradientBoostingRegressor(),
+                            "Support Vector Regressor": SVR(),
+                        }
+
+                        # Train models and evaluate
+                        for model_name, model in models.items():
+                            start_time = time.time()  # Start timer
+                            model.fit(X_train, y_train)
+                            y_pred = model.predict(X_test)
+
+                            # Calculate performance metrics
+                            mse = mean_squared_error(y_test, y_pred)
+                            rmse = np.sqrt(mse)
+                            mae = mean_absolute_error(y_test, y_pred)
+                            r2 = r2_score(y_test, y_pred)
+
+                            # Store performance metrics
+                            model_performance.append({
+                                "Model": model_name,
+                                "RMSE": rmse,
+                                "R² Score": r2,
+                                "MAE": mae,
+                                "Training Time (s)": time.time() - start_time,
+                                "Status": "Success"
+                            })
+
+                        # Convert to DataFrame
+                        comparison_df = pd.DataFrame(model_performance)
+
+                        # Sort the DataFrame
+                        comparison_df = comparison_df.sort_values(by="R² Score", ascending=False)
+
+                        # Best model
+                        best_model_name = comparison_df.loc[comparison_df['R² Score'].idxmax()]['Model']
+                        best_model = comparison_df.loc[comparison_df['Model'] == best_model_name]
+
+                        # Display results for the best model
+                        st.subheader("Best Model: {}".format(best_model_name))
+                        st.write("R² Score: {:.2f}".format(best_model["R² Score"].values[0]))
+                        st.write("RMSE: {:.2f}".format(best_model["RMSE"].values[0]))
+                        st.write("Mean Absolute Error: {:.2f}".format(best_model["MAE"].values[0]))
+
+                    # Display Model Comparison Table
+                    st.subheader("Model Comparison")
+                    st.table(comparison_df)
