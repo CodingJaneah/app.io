@@ -87,15 +87,6 @@ if data_source == "Generate Synthetic Data":
             # Display the text with the calculated percentages
             st.write(f"Test: {test_size_percentage}% / Train: {train_size_percentage}%")
 
-        # # Model selection
-        # st.sidebar.subheader("Model Selection")
-        # model_choice = st.sidebar.radio(
-        #     "Choose a Classification Model",
-        #     ("Logistic Regression", "Decision Trees", "Random Forest", "Gradient Boosting", 
-        #      "Support Vector Machine", "K-Nearest Neighbors", "Naive Bayes", 
-        #      "Linear Discriminant Analysis", "Quadratic Discriminant Analysis")
-        # )
-
         load_data_button = st.sidebar.button("Generate Data and Train Models")
 
         if load_data_button:
@@ -158,7 +149,7 @@ if data_source == "Generate Synthetic Data":
 
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_percentage / 100, random_state=42)
 
-                                # Dictionary to store model performance
+                 # Dictionary to store model performance
                 model_performance = []
 
                 # List of models to train for classification
@@ -174,12 +165,10 @@ if data_source == "Generate Synthetic Data":
                     "Quadratic Discriminant Analysis": QuadraticDiscriminantAnalysis(),
                 }
 
-
-
                 # After training the models and predicting, store the confusion matrices
                 confusion_matrices = []
 
-                # Train models and evaluate
+                # Train models and evaluate as well as iteration through each model 
                 for model_name, model in classification_models.items():
                     start_time = time.time()  # Start timer
                     model.fit(X_train, y_train)  # Train model
@@ -497,7 +486,7 @@ elif data_source == "Upload Dataset":
 
                         # Melt the DataFrame for Plotly
                         metrics_melted = metrics_df.reset_index().melt(id_vars='Model', var_name='Metric', value_name='Score')
-                                                
+
                         # Display Model Comparison Table before Confusion Matrices
                         st.subheader("Model Comparison")
                         st.table(comparison_df)
@@ -568,3 +557,7 @@ elif data_source == "Upload Dataset":
                         st.write("R² Score: {:.2f}".format(best_model["R² Score"].values[0]))
                         st.write("RMSE: {:.2f}".format(best_model["RMSE"].values[0]))
                         st.write("Mean Absolute Error: {:.2f}".format(best_model["MAE"].values[0]))
+                                                
+                        # Display Model Comparison Table before Confusion Matrices
+                        st.subheader("Model Comparison")
+                        st.table(comparison_df)
